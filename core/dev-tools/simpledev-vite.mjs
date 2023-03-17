@@ -106,10 +106,10 @@ try {
 // );
 
 build({
- build: {
-  watch: {}
-}
-});
+  build: {
+   watch: {}
+ }
+ });
 
 var params = {
   port: 4100,
