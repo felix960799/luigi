@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import * as fs from 'fs';
 
 const luigiPlugin = () => {
   return {
@@ -13,6 +14,11 @@ const luigiPlugin = () => {
         return singleHash;
       });
       // console.log(bundle);
+      const themingCSS = bundle['theming.css'];
+      const fdCSS = bundle['fd.css'];
+      let fullCSS = '' + cssFile.source + '\n' + fdCSS.source + '\n' + themingCSS.source;
+
+      fs.writeFileSync('./public/luigi.css', fullCSS);
 
       const jsFile = bundle['luigi.js'];
       jsFile.code = jsFile.code.replace('__luigi_dyn_import', 'import');
