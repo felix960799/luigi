@@ -271,12 +271,12 @@
       aria-haspopup="true"
     >
       <div
-        class="fd-input-group fd-shellbar__input-group luigi-search-input-ctn"
+        class="fd-input-group fd-shellbar__input-group luigi-search-input-ctn fd-shellbar__search-field"
       >
         {#if search && search.disableInputHandlers}
           <input
             type="text"
-            class="fd-input fd-input-group__input fd-shellbar__input-group-input luigi-search__input"
+            class="fd-input fd-input-group__input fd-shellbar__input-group-input luigi-search__input fd-shellbar__search-field-input"
             data-testid="luigi-search-input__no-handlers"
           />
         {:else}
@@ -284,7 +284,7 @@
             type="text"
             on:keyup={event => onKeyUp(event)}
             class="fd-input
-        fd-input-group__input fd-shellbar__input-group-input luigi-search__input"
+        fd-input-group__input fd-shellbar__input-group-input luigi-search__input fd-shellbar__search-field-input"
             data-testid="luigi-search-input"
             bind:this={inputElem}
             on:input={() => renderClearBtn()}
@@ -310,6 +310,7 @@
             </button>
           </span>
         {/if}
+        <div class="fd-shellbar__search-field-helper"></div>
       </div>
       {#if !isCustomSearchRenderer}
         <div
