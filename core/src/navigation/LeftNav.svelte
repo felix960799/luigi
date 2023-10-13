@@ -20,7 +20,7 @@
   import BadgeCounter from './BadgeCounter.svelte';
   import StatusBadge from './StatusBadge.svelte';
   import { KEYCODE_ENTER } from '../utilities/keycode';
-
+  
   //TODO refactor
   const __this = {
     get: () => ({
@@ -153,19 +153,7 @@
             }
           }
         });
-
-        let sideNavAccordionModeOverride =
-          (selectedNode && selectedNode.sideNavAccordionMode) ||
-          (selectedNode &&
-            selectedNode.parent &&
-            selectedNode.parent.sideNavAccordionMode);
-        if (typeof sideNavAccordionModeOverride !== 'undefined') {
-          sideNavAccordionMode = sideNavAccordionModeOverride;
-        } else {
-          sideNavAccordionMode = LuigiConfig.getConfigBooleanValue(
-            'navigation.defaults.sideNavAccordionMode'
-          );
-        }
+        sideNavAccordionMode = NavigationHelpers.getSideNavAccordionMode(selectedNode);
       }
     },
   };
@@ -177,6 +165,7 @@
   export let footerText;
   export let semiCollapsible;
   export let semiCollapsibleButton;
+  export let semiCollapsibleButtonStyle;
   export let pathData;
   export let pathParams;
   export let virtualGroupPrefix = NavigationHelpers.virtualGroupPrefix;
@@ -196,6 +185,10 @@
   let getTranslation = getContext('getTranslation');
   let addNavHrefForAnchor = false;
 
+  const getNodeLabel = (node) => {
+    return NavigationHelpers.getNodeLabel(node);
+  }
+
   const setLeftNavData = async () => {
     const componentData = __this.get();
     const leftNavData = await Navigation.getLeftNavData(
@@ -214,6 +207,8 @@
     semiCollapsibleButton =
       LuigiConfig.getConfigValue('settings.responsiveNavigation') ===
       'semiCollapsible';
+    semiCollapsibleButtonStyle = 
+      LuigiConfig.getConfigValue('settings.semiCollapsibleButtonStyle');
     addNavHrefForAnchor = LuigiConfig.getConfigValue('navigation.addNavHrefs');
     hideNavComponent = LuigiConfig.getConfigBooleanValue(
       'settings.hideNavigation'
@@ -229,6 +224,14 @@
         footerText = LuigiConfig.getConfigValue('settings.sideNavFooterText');
       },
       ['settings.footer']
+    );
+
+    StateHelpers.doOnStoreChange(
+      store,
+      () => {
+        setLeftNavData();
+      },
+      ['navigation.viewgroupdata']
     );
 
     let stateArr = SemiCollapsibleNavigation.initial();
@@ -252,9 +255,8 @@
     sideNavCompactMode = LuigiConfig.getConfigBooleanValue(
       'settings.sideNavCompactMode'
     );
-    semiCollapsibleButton =
-      LuigiConfig.getConfigValue('settings.responsiveNavigation') ===
-      'semiCollapsible';
+    expandedCategories = NavigationHelpers.loadExpandedCategories();
+    semiCollapsibleButton = LuigiConfig.getConfigValue('settings.responsiveNavigation') === 'semiCollapsible';
   });
 
   export let sortedChildrenEntries;
@@ -569,10 +571,7 @@
                       <li class="fd-nested-list__item">
                         <a
                           href={getRouteLink(node)}
-                          title={resolveTooltipText(
-                            node,
-                            $getTranslation(node.label)
-                          )}
+                          title={resolveTooltipText(node, getNodeLabel(node))}
                           class="fd-nested-list__link {node === selectedNode
                             ? 'is-selected'
                             : ''}"
@@ -617,7 +616,7 @@
                             node.statusBadge.align === 'right'
                               ? 'right'
                               : 'left'}"
-                            >{$getTranslation(node.label)}
+                            >{getNodeLabel(node)}
                             <StatusBadge {node} />
                           </span>
                           {#if node.externalLink && node.externalLink.url}
@@ -754,7 +753,7 @@
                                 data-testid={getTestId(node)}
                                 title={resolveTooltipText(
                                   node,
-                                  $getTranslation(node.label)
+                                  getNodeLabel(node)
                                 )}
                               >
                                 <span
@@ -763,7 +762,7 @@
                                     ? 'right'
                                     : 'left'}"
                                 >
-                                  {$getTranslation(node.label)}
+                                  {getNodeLabel(node)}
                                   <StatusBadge {node} />
                                 </span>
 
@@ -815,7 +814,7 @@
                                       data-testid={getTestId(node)}
                                       title={resolveTooltipText(
                                         node,
-                                        $getTranslation(node.label)
+                                        getNodeLabel(node)
                                       )}
                                     >
                                       <span
@@ -824,7 +823,7 @@
                                           ? 'right'
                                           : 'left'}"
                                       >
-                                        {$getTranslation(node.label)}
+                                        {getNodeLabel(node)}
                                         <StatusBadge {node} />
                                       </span>
                                       {#if node.externalLink && node.externalLink.url}
@@ -878,10 +877,7 @@
                       {#if node.label}
                         <li
                           class="fd-nested-list__item"
-                          title={resolveTooltipText(
-                            node,
-                            $getTranslation(node.label)
-                          )}
+                          title={resolveTooltipText(node, getNodeLabel(node))}
                           aria-labelledby="category_list_level1_{index}"
                         >
                           <a
@@ -933,7 +929,7 @@
                               node.statusBadge.align === 'right'
                                 ? 'right'
                                 : 'left'}"
-                              >{$getTranslation(node.label)}
+                              >{getNodeLabel(node)}
                               {#if node.statusBadge}
                                 <StatusBadge {node} />
                               {/if}
@@ -966,16 +962,32 @@
             >{footerText ? footerText : ''}</span
           >
           {#if semiCollapsibleButton}
-            <i
-              class="lui-side-nav__footer--icon {isSemiCollapsed
-                ? 'sap-icon--open-command-field'
-                : 'sap-icon--close-command-field'}"
-              on:click={event => semiCollapsibleButtonClicked(event, this)}
-              on:keydown={event => handleEnterSemiCollapseBtn(event, this)}
-              data-testid="semiCollapsibleButton"
-              title={burgerTooltip}
-              tabindex="0"
-            />
+            {#if semiCollapsibleButtonStyle == 'button'}
+              <button
+                on:click={event => semiCollapsibleButtonClicked(event, this)}
+                data-testid="semiCollapsibleButton"
+                title={burgerTooltip}
+                tabindex="0"
+                class="fd-button fd-button--transparent fd-button--cozy lui-semi-btn"
+              >
+                <i
+                  class="lui-side-nav__footer--icon {isSemiCollapsed
+                    ? 'sap-icon--open-command-field'
+                    : 'sap-icon--close-command-field'}"
+                />
+              </button>
+            {:else}
+              <i
+                class="lui-side-nav__footer--icon {isSemiCollapsed
+                  ? 'sap-icon--open-command-field'
+                  : 'sap-icon--close-command-field'}"
+                on:click={event => semiCollapsibleButtonClicked(event, this)}
+                on:keydown={event => handleEnterSemiCollapseBtn(event, this)}
+                data-testid="semiCollapsibleButton"
+                title={burgerTooltip}
+                tabindex="0"
+              />
+            {/if}
           {/if}
         </span>
       </div>
@@ -986,7 +998,6 @@
 <style type="text/scss">
   @import 'src/styles/_mixins.scss';
   @import 'src/styles/_variables.scss';
-
 
   :root {
     /* needed for IE11 support */
@@ -1187,7 +1198,6 @@
     height: 100%;
     overflow-y: auto;
     overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
     background-color: transparent;
     @include transition(width 0.1s linear);
   }
@@ -1214,6 +1224,22 @@
     &--icon {
       cursor: pointer;
       padding: $footerPaddingVertical 15px;
+    }
+
+    .lui-semi-btn {
+      margin: var(--sapContent_FocusWidth);
+      color: var(--sapContent_IconColor);
+      width: calc(
+        $leftNavWidthCollapsed - 2 *
+          (var(--fdButton_Outline_Offset) + var(--sapContent_FocusWidth))
+      );
+    }
+
+    .lui-semi-btn &--icon {
+      padding: 0;
+    }
+    .lui-semi-btn:focus:after {
+      border: none;
     }
   }
 
@@ -1383,7 +1409,6 @@
       max-height: 190px;
       overflow-y: auto;
     }
-
 
     &.has-bottom-position {
       .lui-flyout-sublist__wrapper {

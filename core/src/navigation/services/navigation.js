@@ -40,12 +40,9 @@ class NavigationClass {
         NodeDataManagementStorage.setRootNode(rootNode);
       }
       const nodeNamesInCurrentPath = activePath.split('/');
-      const navObj = await this.buildNode(
-        nodeNamesInCurrentPath,
-        [rootNode],
-        rootNode.children,
-        rootNode.context || {}
-      );
+      const globalContext = LuigiConfig.getConfigValue('navigation.globalContext');
+      const rootContext = { ...(globalContext || {}), ...(rootNode.context || {}) };
+      const navObj = await this.buildNode(nodeNamesInCurrentPath, [rootNode], rootNode.children, rootContext);
       const navPathSegments = navObj.navigationPath.filter(x => x.pathSegment).map(x => x.pathSegment);
       navObj.isExistingRoute = !activePath || nodeNamesInCurrentPath.length === navPathSegments.length;
       const pathSegments = activePath.split('/');
@@ -349,7 +346,7 @@ class NavigationClass {
           if (node.keepSelectedForChildren === false) {
             // explicitly set to false
             childToKeepFound = true;
-          } else if (node.keepSelectedForChildren || node.tabNav) {
+          } else if (node.keepSelectedForChildren || (node.tabNav && !RoutingHelpers.isDynamicNode(node))) {
             childToKeepFound = true;
             res = [];
           }
@@ -371,7 +368,7 @@ class NavigationClass {
         pathDataTruncatedChildren.pop();
         lastElement = [...pathDataTruncatedChildren].pop();
       }
-      const children = await this.getChildren(lastElement, componentData.context);
+      const children = await this.getChildren(lastElement, componentData.pathData?._context);
       const groupedChildrenData = this.getGroupedChildren(children, current);
       updatedCompData.navParent = groupedChildrenData.parent || lastElement;
       updatedCompData.context = current.pathData._context;
@@ -384,8 +381,34 @@ class NavigationClass {
       });
       updatedCompData.selectedNode = selectedNode || lastElement;
       updatedCompData.children = groupedChildren;
+      const isExpandCategoriesByNavigation = LuigiConfig.getConfigValue('settings.expandCategoryByNavigation');
+      if (isExpandCategoriesByNavigation) {
+        this.expandCategoriesByNavigationFn(
+          updatedCompData.children,
+          updatedCompData.selectedNode,
+          NavigationHelpers.getSideNavAccordionMode(updatedCompData.selectedNode)
+        );
+      }
     }
     return updatedCompData;
+  }
+
+  /**
+   * Checks if selectedNode has a category and if yes the categoryUid in metaInfo will be written to the browsers localstorage.
+   * @param {*} sortedChildrenEntries are sorted left nav node data
+   * @param {*} selectedNode
+   * @param {boolean} sideNavAccordionMode
+   */
+  expandCategoriesByNavigationFn(sortedChildrenEntries, selectedNode, sideNavAccordionMode) {
+    if (sortedChildrenEntries) {
+      for (const [key, categoryChildren] of Object.entries(sortedChildrenEntries)) {
+        categoryChildren.forEach(node => {
+          if (node === selectedNode && categoryChildren.metaInfo && categoryChildren.metaInfo.collapsible) {
+            NavigationHelpers.storeExpandedState(categoryChildren.metaInfo.categoryUid, true, sideNavAccordionMode);
+          }
+        });
+      }
+    }
   }
 
   /**
@@ -414,7 +437,7 @@ class NavigationClass {
       let selectedNode = [...pathDataTruncatedChildren].pop();
       const children = await this.getChildren(
         selectedNode.tabNav ? selectedNode : selectedNode.parent,
-        componentData.context
+        current.pathData?._context
       );
       const groupedChildren = this.getGroupedChildren(children, current).children;
       updatedCompData.selectedNode = selectedNode;
@@ -431,7 +454,11 @@ class NavigationClass {
   }
 
   async shouldPreventNavigation(node) {
-    if (node && GenericHelpers.isFunction(node.onNodeActivation) && (await node.onNodeActivation(node)) === false) {
+    if (
+      node &&
+      (GenericHelpers.isFunction(node.onNodeActivation) || GenericHelpers.isAsyncFunction(node.onNodeActivation)) &&
+      (await node.onNodeActivation(node)) === false
+    ) {
       return true;
     }
     return false;

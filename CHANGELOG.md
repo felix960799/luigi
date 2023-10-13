@@ -25,6 +25,143 @@ The lerna-changelog tool detects changes based on PR labels and maps them to sec
 -->
 
 
+## [v2.6.3] (2023-10-05)
+
+#### :rocket: Added
+* [#3448](https://github.com/SAP/luigi/pull/3448) Update peer dependencies to angular v16 for client-support-angular library ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+
+
+
+## [v2.6.2] (2023-09-26)
+
+#### :bug: Fixed
+* [#3450](https://github.com/SAP/luigi/pull/3450) detect configChangedRequest only on config changed ([@hardl](https://github.com/hardl))
+
+
+
+
+## [v2.6.1] (2023-09-22)
+
+#### :bug: Fixed
+* [#3444](https://github.com/SAP/luigi/pull/3444) Fix path in updateModalSettings ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3443](https://github.com/SAP/luigi/pull/3443) Fix runtime error for wc ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+
+
+
+## [v2.6.0] (2023-09-20)
+
+#### :rocket: Added
+* [#3414](https://github.com/SAP/luigi/pull/3414) Add getUserSettings for webcomponents ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+#### :bug: Fixed
+* [#3438](https://github.com/SAP/luigi/pull/3438) Fix wrong context in leftnav after update ([@hardl](https://github.com/hardl))
+
+
+
+
+
+
+## [v2.5.1] (2023-09-05)
+
+#### :bug: Fixed
+* [#3429](https://github.com/SAP/luigi/pull/3429) Fix getContextAsync in client lib for angular ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+## [v2.5.0] (2023-08-31)
+
+#### :rocket: Added
+* [#3405](https://github.com/SAP/luigi/pull/3405) Return empty object for getContext ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3416](https://github.com/SAP/luigi/pull/3416) Global context ([@hardl](https://github.com/hardl))
+
+#### :bug: Fixed
+* [#3409](https://github.com/SAP/luigi/pull/3409) Statusbadge for horizontal nav ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3406](https://github.com/SAP/luigi/pull/3406) Fix go back context multiple modals ([@ndricimrr](https://github.com/ndricimrr))
+
+
+
+
+## [v2.4.0] (2023-08-23)
+
+#### :rocket: Added
+* [#3389](https://github.com/SAP/luigi/pull/3389) addNodeParams, getNodeParams and setAnchor for wc luigiClient ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3404](https://github.com/SAP/luigi/pull/3404) Remove onunload listener ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3395](https://github.com/SAP/luigi/pull/3395) Added modalSettings.keepPrevious ([@itsajay1029](https://github.com/itsajay1029))
+* [#3394](https://github.com/SAP/luigi/pull/3394) Add data-testid attr to the close button for modal ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3352](https://github.com/SAP/luigi/pull/3352) onLoad functionality for wc mfe ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+
+
+## [v2.3.0] (2023-07-28)
+
+#### :rocket: Added
+* [#3339](https://github.com/SAP/luigi/pull/3339) Write updated modal settings to url ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3326](https://github.com/SAP/luigi/pull/3326) Expand category by navigation ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3234](https://github.com/SAP/luigi/pull/3234) Transfer theme vars ([@hardl](https://github.com/hardl))
+* [#3285](https://github.com/SAP/luigi/pull/3285) Semicollapsible with button ([@hardl](https://github.com/hardl))
+* [#3294](https://github.com/SAP/luigi/pull/3294) Removed internet explorer logic ([@somabagyinszky7](https://github.com/somabagyinszky7))
+
+#### :bug: Fixed
+* [#3366](https://github.com/SAP/luigi/pull/3366) Fix incomplete context for tabheader mfe ([@hardl](https://github.com/hardl))
+* [#3358](https://github.com/SAP/luigi/pull/3358) Remove wc node when navigate away ([@hardl](https://github.com/hardl))
+* [#3357](https://github.com/SAP/luigi/pull/3357) Tabnav: no context passed to accessibilityResolver ([@hardl](https://github.com/hardl))
+* [#3340](https://github.com/SAP/luigi/pull/3340) Bug-fix: close modal loadingIndicator enabled ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3333](https://github.com/SAP/luigi/pull/3333) Bug-fix: No rendering of categories without children ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3301](https://github.com/SAP/luigi/pull/3301) Added helper method for calculating shellbar height ([@somabagyinszky7](https://github.com/somabagyinszky7))
+* [#3302](https://github.com/SAP/luigi/pull/3302) Changed configChanged scope for vgdata ([@hardl](https://github.com/hardl))
+
+
+
+
+## [v2.2.1] (2023-05-26)
+
+#### :bug: Fixed
+* [#3296](https://github.com/SAP/luigi/pull/3296) Fix tabnav header flickering issue ([@hardl](https://github.com/hardl))
+* [#3297](https://github.com/SAP/luigi/pull/3297) Fix WC Compound Rerendering issue ([@hardl](https://github.com/hardl))
+* [#3283](https://github.com/SAP/luigi/pull/3283) CSP improvements ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3276](https://github.com/SAP/luigi/pull/3276) Fix showModalPathInUrl is undefined ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+
+## [v2.2.0] (2023-05-02)
+
+#### :rocket: Added
+* [#3243](https://github.com/SAP/luigi/pull/3243) Viewgroup live settings ([@hardl](https://github.com/hardl))
+* [#3253](https://github.com/SAP/luigi/pull/3253) tabnav header micro frontend ([@hardl](https://github.com/hardl))
+* [#3226](https://github.com/SAP/luigi/pull/3226) Prevent rerendering of webcomponent ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3240](https://github.com/SAP/luigi/pull/3240) Remove breadcrumbs from experimental flag([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+#### :bug: Fixed
+* [#3241](https://github.com/SAP/luigi/pull/3241) Fix confirmation modal on reject result ([@ndricimrr](https://github.com/ndricimrr))
+* [#3258](https://github.com/SAP/luigi/pull/3258) Fix external link same window ([@hardl](https://github.com/hardl))
+* [#3257](https://github.com/SAP/luigi/pull/3257) Accordion element not showing correctly in breadcrumb docu ([@alexandra-simeonova](https://github.com/alexandra-simeonova))
+
+
+
+
+## [v2.1.0] (2023-03-30)
+
+#### :rocket: Added
+* [#3236](https://github.com/SAP/luigi/pull/3236) Get dirty status via core api ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+#### :bug: Fixed
+* [#3247](https://github.com/SAP/luigi/pull/3247) Fix context switcher loading indicator redundant render ([@ndricimrr](https://github.com/ndricimrr))
+* [#3209](https://github.com/SAP/luigi/pull/3209) pkce fix ([@JohannesDoberer](https://github.com/JohannesDoberer))
+* [#3182](https://github.com/SAP/luigi/pull/3182) Css-fix: wrong top value for iframeContainer when tabnav enabled ([@JohannesDoberer](https://github.com/JohannesDoberer))
+
+
+
+
+
 ## [v2.0.1] (2023-02-14)
 
 #### :bug: Fixed
@@ -588,7 +725,7 @@ The lerna-changelog tool detects changes based on PR labels and maps them to sec
 - [#1477](https://github.com/SAP/luigi/pull/1477) ContextSwitcher fix selected state ([@maxmarkus](https://github.com/maxmarkus))
 - [#1441](https://github.com/SAP/luigi/pull/1441) Navigation with and without params on the same node ([@ndricimrr](https://github.com/ndricimrr))
 
-> With Luigi version v1.3.0, the new v0.10.0 of Fundamental Library Styles were included. As a result, there were breaking changes to the Luigi side navigation. You can see the updated layout [here](https://sap.github.io/fundamental-styles/components/side-navigation.html).
+> With Luigi version v1.3.0, the new v0.10.0 of Fundamental Library Styles were included. As a result, there were breaking changes to the Luigi side navigation. You can see the updated layout [here](https://sap.github.io/fundamental-styles/?path=/docs/sap-fiori-deprecated-components-side-navigation--docs).
 
 ## [v1.2.4](2020-07-02)
 
@@ -1497,3 +1634,14 @@ The lerna-changelog tool detects changes based on PR labels and maps them to sec
 [v1.26.0]: https://github.com/SAP/luigi/compare/v1.25.1...v1.26.0
 [v2.0.0]: https://github.com/SAP/luigi/compare/v1.25.1...v2.0.0
 [v2.0.1]: https://github.com/SAP/luigi/compare/v2.0.0...v2.0.1
+[v2.1.0]: https://github.com/SAP/luigi/compare/v2.0.1...v2.1.0
+[v2.2.0]: https://github.com/SAP/luigi/compare/v2.1.0...v2.2.0
+[v2.2.1]: https://github.com/SAP/luigi/compare/v2.2.0...v2.2.1
+[v2.3.0]: https://github.com/SAP/luigi/compare/v2.2.1...v2.3.0
+[v2.4.0]: https://github.com/SAP/luigi/compare/v2.3.0...v2.4.0
+[v2.5.0]: https://github.com/SAP/luigi/compare/v2.4.0...v2.5.0
+[v2.5.1]: https://github.com/SAP/luigi/compare/v2.5.0...v2.5.1
+[v2.6.0]: https://github.com/SAP/luigi/compare/v2.5.1...v2.6.0
+[v2.6.1]: https://github.com/SAP/luigi/compare/v2.6.0...v2.6.1
+[v2.6.2]: https://github.com/SAP/luigi/compare/v2.6.1...v2.6.2
+[v2.6.3]: https://github.com/SAP/luigi/compare/v2.6.2...v2.6.3

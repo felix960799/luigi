@@ -72,7 +72,7 @@
     'navigation.addNavHrefs'
   );
   const setTopNavData = async () => {
-    if (pathData && 0 < pathData.length) {
+    if (pathData && 0 < pathData.length) { 
       const tnd = await NavigationHelpers.generateTopNavNodes(pathData);
       children = tnd.children;
       selectedNode = tnd.selectedNode;
@@ -135,6 +135,14 @@
       ['navigation']
     );
 
+    StateHelpers.doOnStoreChange(
+      store,
+      () => {
+        setTopNavData();
+      },
+      ['navigation.viewgroupdata']
+    );
+
     EventListenerHelpers.addEventListener('message', (e) => {
       if ('luigi.navigation.update-badge-counters' === e.data.msg) {
         setTopNavData();
@@ -162,8 +170,8 @@
     return NavigationHelpers.isOpenUIiconName(node.icon);
   }
 
-  function getNodeLabel(node) {
-    return LuigiI18N.getTranslation(node.label);
+  const getNodeLabel = (node) => {
+    return NavigationHelpers.getNodeLabel(node);
   }
 
   function getTestId(node) {
@@ -381,48 +389,51 @@
           {#each children as node, i}
             {#if !(node.hideFromNav || (showGlobalNav && node.globalNav))}
               {#if node.isCat}
-                <div
-                  class="fd-shellbar__action fd-shellbar__action--hide fd-shellbar__action--desktop"
-                >
-                  <div class="fd-popover fd-popover--right">
-                    <div
-                      class="fd-popover__control"
-                      on:click|stopPropagation={() => {}}
-                    >
-                      <button
-                        title={resolveTooltipText(node, getNodeLabel(node))}
-                        class="fd-shellbar__button fd-button fd-button--transparent {node ===
-                        selectedNode
-                          ? 'is-selected'
-                          : ''}"
-                        aria-controls="dropDownPopover-{i}"
-                        aria-expanded={dropDownStates[`dropDownPopover-${i}`] ||
-                          false}
-                        aria-haspopup="true"
-                        on:click={() =>
-                          toggleDropdownState(`dropDownPopover-${i}`)}
-                        data-testid={getTestId(node)}
+                {#if node.visibleChildren.filter(node => !node.hideFromNav && node.label).length > 0}
+                  <div
+                    class="fd-shellbar__action fd-shellbar__action--hide fd-shellbar__action--desktop"
+                  >
+                    <div class="fd-popover fd-popover--right">
+                      <div
+                        class="fd-popover__control"
+                        on:click|stopPropagation={() => {}}
                       >
-                        <TopNavNode bind:node />
-                        <BadgeCounter {node} />
-                      </button>
-                    </div>
-                    <div
-                      class="fd-popover__body fd-popover__body--right"
-                      aria-hidden={!(
-                        dropDownStates[`dropDownPopover-${i}`] || false
-                      )}
-                      id="dropDownPopover-{i}"
-                    >
-                      <TopNavDropDown
-                        {node}
-                        isMobile={false}
-                        {pathParams}
-                        {addNavHrefForAnchor}
-                      />
+                        <button
+                          title={resolveTooltipText(node, getNodeLabel(node))}
+                          class="fd-shellbar__button fd-button fd-button--transparent {node ===
+                          selectedNode
+                            ? 'is-selected'
+                            : ''}"
+                          aria-controls="dropDownPopover-{i}"
+                          aria-expanded={dropDownStates[
+                            `dropDownPopover-${i}`
+                          ] || false}
+                          aria-haspopup="true"
+                          on:click={() =>
+                            toggleDropdownState(`dropDownPopover-${i}`)}
+                          data-testid={getTestId(node)}
+                        >
+                          <TopNavNode bind:node />
+                          <BadgeCounter {node} />
+                        </button>
+                      </div>
+                      <div
+                        class="fd-popover__body fd-popover__body--right"
+                        aria-hidden={!(
+                          dropDownStates[`dropDownPopover-${i}`] || false
+                        )}
+                        id="dropDownPopover-{i}"
+                      >
+                        <TopNavDropDown
+                          {node}
+                          isMobile={false}
+                          {pathParams}
+                          {addNavHrefForAnchor}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                {/if}
               {:else}
                 <div
                   class="fd-shellbar__action fd-shellbar__action--hide fd-shellbar__action--desktop"
@@ -581,7 +592,7 @@
                                   >
                                 </a>
                               </li>
-                            {:else}
+                            {:else if node.visibleChildren.filter(node => !node.hideFromNav && node.label).length > 0}
                               <li class="fd-menu__item">
                                 <a
                                   href={getRouteLink(node)}
@@ -822,8 +833,9 @@
     height: $topNavHeight;
     box-shadow: var(--sapContent_HeaderShadow);
 
-    .fd-avatar.is-focus:after,.fd-avatar:focus:after {
-      border-color:var(--fdShellbar_Button_Outline_Color);
+    .fd-avatar.is-focus:after,
+    .fd-avatar:focus:after {
+      border-color: var(--fdShellbar_Button_Outline_Color);
     }
   }
 

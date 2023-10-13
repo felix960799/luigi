@@ -4,6 +4,7 @@ import { AuthHelpers, GenericHelpers, RoutingHelpers } from './';
 import { Navigation } from '../../navigation/services/navigation';
 import { Routing } from '../../services/routing';
 import { reject, get } from 'lodash';
+import { Iframe } from '../../services/iframe';
 
 class NavigationHelpersClass {
   constructor() {
@@ -275,6 +276,11 @@ class NavigationHelpersClass {
         badgeCountsToSumUp.push(badgeCount);
       }
     }
+    for (let i = 0; i < children.length; i++) {
+      if (children[i].isCat) {
+        children[i].visibleChildren = (await Navigation.getChildren(children[i])) || [];
+      }
+    }
     const tnd = {
       children,
       selectedNode,
@@ -292,6 +298,22 @@ class NavigationHelpersClass {
       };
     }
     return tnd;
+  }
+
+  /**
+   * Returns if sideNavAccordionMode is true or false
+   * @param {*} selectedNode
+   * @returns if sideNavAccordionMode is true or false
+   */
+  getSideNavAccordionMode(selectedNode) {
+    let sideNavAccordionModeOverride =
+      (selectedNode && selectedNode.sideNavAccordionMode) ||
+      (selectedNode && selectedNode.parent && selectedNode.parent.sideNavAccordionMode);
+    if (typeof sideNavAccordionModeOverride !== 'undefined') {
+      return sideNavAccordionModeOverride;
+    } else {
+      return LuigiConfig.getConfigBooleanValue('navigation.defaults.sideNavAccordionMode');
+    }
   }
 
   loadExpandedCategories() {
@@ -507,6 +529,24 @@ class NavigationHelpersClass {
       event.stopPropagation();
       return false;
     }
+  }
+
+  /**
+   * Replace the node label with the live custom data from the view group settings.
+   * @param {Object} node
+   * @returns node label
+   */
+  getNodeLabel(node) {
+    let label = LuigiI18N.getTranslation(node.label);
+    const vg = RoutingHelpers.findViewGroup(node);
+
+    if (vg) {
+      const vgSettings = Iframe.getViewGroupSettings(vg) || {};
+      let cdata = { ...(vgSettings.customData || {}), ...(vgSettings._liveCustomData || {}) };
+      label = GenericHelpers.replaceVars(label, cdata, 'viewGroupData.');
+    }
+
+    return label;
   }
 }
 

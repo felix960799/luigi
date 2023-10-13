@@ -5,17 +5,21 @@
     createEventDispatcher,
     onMount,
     onDestroy,
+    getContext
   } from 'svelte';
-  import { fade } from 'svelte/transition';
   import { Navigation } from './navigation/services/navigation';
   import {
     EventListenerHelpers,
     GenericHelpers,
     IframeHelpers,
     RoutingHelpers,
+    NavigationHelpers,
+    StateHelpers
   } from './utilities/helpers';
   import { KEYCODE_ESC } from './utilities/keycode.js';
   import { WebComponentService } from './services/web-components';
+  import { Routing } from './services';
+  import { LuigiConfig } from './core-api';
 
   export let settings;
   export let isDataPrepared = false;
@@ -29,10 +33,16 @@
   let nodeParams;
   let iframeCreated = false;
   let wcCreated = false;
-  let showLoadingIndicator = true;
+  let showLoadingIndicator = false;
+  let contextRequested = false;
   let isDrawer = false;
   let isModal = true;
   let modalElementClassSelector;
+  let store = getContext('store');
+
+  const getNodeLabel = (node) => {
+    return NavigationHelpers.getNodeLabel(node);
+  }
 
   const prepareNodeData = async (path) => {
     const pathUrlRaw =
@@ -42,12 +52,18 @@
     const dataFromPath = await Navigation.extractDataFromPath(path);
     nodeObject = dataFromPath.nodeObject;
     isDrawer = settings.isDrawer || typeof nodeObject.drawer === 'object';
-    modalElementClassSelector = isDrawer ? '._drawer' : `[modal-container-index="${modalIndex}"]`;
+    modalElementClassSelector = isDrawer
+      ? '._drawer'
+      : `[modal-container-index="${modalIndex}"]`;
+
+    settings._liveLabel = false;
+
     if (isDrawer) {
       isModal = false;
       if (settings.header === undefined) {
         settings.header = true;
-        settings.title = nodeObject.label;
+        settings.title = getNodeLabel(nodeObject);
+        settings._liveLabel = true;
       } else if (settings.header && settings.header.title) {
         settings.title = settings.header.title;
       }
@@ -63,7 +79,8 @@
       }
     } else {
       if (!settings.title) {
-        settings.title = nodeObject.label;
+        settings.title = getNodeLabel(nodeObject);
+        settings._liveLabel = true;
       }
     }
     pathData = dataFromPath.pathData;
@@ -89,8 +106,9 @@
         WebComponentService.renderWebComponent(
           nodeObject.viewUrl,
           document.querySelector(modalElementClassSelector),
-          pathData.context,
-          nodeObject
+          { context: pathData.context, clientPermissions: nodeObject.clientPermissions || {}, pathParams: pathData.pathParams || {} },
+          nodeObject,
+          undefined, true
         );
         dispatch('wcCreated', {
           modalWC: document.querySelector(modalElementClassSelector),
@@ -98,9 +116,7 @@
         });
         wcCreated = true;
       } else {
-        showLoadingIndicator = nodeObject.loadingIndicator
-          ? nodeObject.loadingIndicator.enabled
-          : true;
+       
         const iframe = await createIframeModal(nodeObject.viewUrl, {
           context: pathData.context,
           pathParams: pathData.pathParams,
@@ -122,7 +138,7 @@
     const elem = document.querySelector('.lui-modal-index-' + modalIndex);
     const { size, width: settingsWidth, height: settingsHeight } = settings;
     const regex = /^.?[0-9]{1,3}(%|px|rem|em|vh|vw)$/;
-
+    elem.classList.remove('lui-modal-fullscreen');
     if (
       settingsWidth &&
       settingsWidth.match(regex) &&
@@ -216,12 +232,13 @@
     }
 
     if ('luigi.get-context' === e.data.msg) {
+      contextRequested = true;
       const loadingIndicatorAutoHideEnabled =
         !nodeObject ||
         !nodeObject.loadingIndicator ||
         nodeObject.loadingIndicator.hideAutomatically !== false;
       if (loadingIndicatorAutoHideEnabled) {
-        showLoadingIndicator = false;
+       fadeOutLoadingIndicator();
       }
     }
 
@@ -240,23 +257,45 @@
         settings.size = e.data.updatedModalSettings.size;
         await setModalSize();
       }
+      if(LuigiConfig.getConfigBooleanValue('routing.showModalPathInUrl')){
+        Routing.updateModalDataInUrl(RoutingHelpers.getModalPathFromPath(), {'title':settings.title, 'size':settings.size}, e.data.addHistoryEntry);   
+      }
     }
   };
 
   onMount(() => {
+    StateHelpers.doOnStoreChange(
+      store,
+      () => {
+        if (settings._liveLabel && nodeObject) {
+          settings.title = getNodeLabel(nodeObject);
+        }
+      },
+      ['navigation.viewgroupdata']
+    );
     EventListenerHelpers.addEventListener('message', onMessage);
     // only disable accessibility for all cases other than a drawer without backdrop
     !(settings.isDrawer && !settings.backdrop)
-      ? IframeHelpers.disableA11YKeyboardExceptClassName('.lui-modal-index-' + modalIndex)
+      ? IframeHelpers.disableA11YKeyboardExceptClassName(
+          '.lui-modal-index-' + modalIndex
+        )
       : '';
     window.focus();
+    // activate loadingindicator if onMount function takes longer than expected
+    setTimeout(() => {
+      if(!contextRequested && !nodeObject.webcomponent && nodeObject.loadingIndicator?.enabled!==false){
+        showLoadingIndicator = true;
+      }
+    }, 250);
   });
 
   onDestroy(() => {
     EventListenerHelpers.removeEventListener('message', onMessage);
     // only disable accessibility for all cases other than a drawer without backdrop
     !(settings.isDrawer && !settings.backdrop)
-      ? IframeHelpers.enableA11YKeyboardBackdropExceptClassName('.lui-modal-index-' + modalIndex)
+      ? IframeHelpers.enableA11YKeyboardBackdropExceptClassName(
+          '.lui-modal-index-' + modalIndex
+        )
       : '';
   });
 
@@ -265,6 +304,26 @@
   export function handleKeydown(event) {
     if (event.keyCode === KEYCODE_ESC) {
       dispatch('close');
+    }
+  }
+
+  /**
+   * This function will be called if the LuigiClient requested the context.
+   * That means spinner can fade out in order to display the mf.
+   * After 250 ms the spinner will be removed from DOM.
+   */
+  function fadeOutLoadingIndicator() {
+    let spinnerContainer;
+    if(isModal){
+      spinnerContainer = document.querySelector(`.lui-modal-mf.lui-modal-index-${modalIndex} .spinnerContainer`);
+    }else{
+      spinnerContainer = document.querySelector(`.drawer .spinnerContainer`);
+    }
+    if (spinnerContainer && spinnerContainer.classList.contains("fade-out")) {
+      spinnerContainer.classList.remove("fade-out");
+      setTimeout(() => {
+        showLoadingIndicator = false;
+      }, 250);
     }
   }
 </script>
@@ -305,6 +364,9 @@
               class="fd-button fd-button--transparent fd-button--compact"
               on:click={() => dispatch('close', { activeDrawer: false })}
               aria-label="close"
+              data-testid={settings.closebtn_data_testid && isModal
+                ? settings.closebtn_data_testid
+                : 'lui-modal-index-' + modalIndex}
             >
               <i class="sap-icon sap-icon--decline" />
             </button>
@@ -323,21 +385,19 @@
     </div>
     {#if showLoadingIndicator}
       <div
-        in:fade={{ delay: 250, duration: 250 }}
-        out:fade={{ duration: 250 }}
-        class="fd-page spinnerContainer"
+        class="fd-page spinnerContainer fade-out"
         aria-hidden="false"
         aria-label="Loading"
       >
         <div
-          class="fd-busy-indicator--m"
+          class="fd-busy-indicator fd-busy-indicator--m"
           aria-hidden="false"
           aria-label="Loading"
           data-testid="luigi-loading-spinner"
         >
-          <div class="fd-busy-indicator--circle-0" />
-          <div class="fd-busy-indicator--circle-1" />
-          <div class="fd-busy-indicator--circle-2" />
+          <div class="fd-busy-indicator__circle" />
+          <div class="fd-busy-indicator__circle" />
+          <div class="fd-busy-indicator__circle" />
         </div>
       </div>
     {/if}
@@ -357,7 +417,7 @@
     width: 25%;
     z-index: 3;
     right: 0;
-    
+
     .drawer {
       height: 100%;
     }
@@ -415,6 +475,8 @@
     display: flex;
     width: 100%;
     height: 100%;
+    opacity: 0;
+    transition: opacity 0.25s;
   }
 
   .drawer-dialog__content {
@@ -448,5 +510,9 @@
 
   .lui-modal-header {
     position: relative;
+  }
+
+  .fade-out {
+    opacity: 1;
   }
 </style>

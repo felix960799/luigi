@@ -23,6 +23,15 @@ class GenericHelpersClass {
   }
 
   /**
+   * Checks if input is an async function.
+   * @param functionToCheck mixed
+   * @returns {boolean}
+   */
+  isAsyncFunction(functionToCheck) {
+    return functionToCheck && {}.toString.call(functionToCheck) === '[object AsyncFunction]';
+  }
+
+  /**
    * Checks if input is a promise.
    * @param promiseToCheck mixed
    * @returns {boolean}
@@ -252,7 +261,20 @@ class GenericHelpersClass {
   }
 
   getContentAreaHeight /* istanbul ignore next */() {
-    return this.getInnerHeight() - LuigiElements.getShellbar().clientHeight;
+    const contentAreaHeight = this.getInnerHeight() - this.getShellbarHeight();
+    return contentAreaHeight;
+  }
+
+  /**
+   * Returns the height of the shellbar component.
+   * This is important for calculating the height of available area
+   * for displaying content. If the shellbar component is not present, returns 0.
+   * @returns {number} height of the shellbar component
+   */
+  getShellbarHeight() {
+    const shellBar = LuigiElements.getShellbar() || {};
+    const shellBarHeight = shellBar.clientHeight || 0;
+    return shellBarHeight;
   }
 
   computePxFromPercent(fullPixels, requestedPercent) {

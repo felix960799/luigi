@@ -17,7 +17,6 @@
     setContext,
     createEventDispatcher,
   } from 'svelte';
-  import { fade } from 'svelte/transition';
   import { CSS_BREAKPOINTS } from './utilities/constants';
   import {
     EventListenerHelpers,
@@ -102,6 +101,9 @@
   let searchProvider;
   let internalUserSettingsObject = {};
   let burgerTooltip;
+  let breadcrumbsEnabled;
+  let contextRequested = false;
+  let loadingIndicatorTimeout;
   export let isSearchFieldVisible;
   export let inputElem;
   export let luigiCustomSearchRenderer__slot;
@@ -109,7 +111,6 @@
   export let displayCustomSearchResult = true;
   export let searchResult;
   export let storedUserSettings;
-  let breadcrumbsEnabled;
 
   const prepareInternalData = async (config) => {
     const iframeConf = config.iframe.luigi;
@@ -130,6 +131,7 @@
         ? userSettingGroups[userSettingsGroupName]
         : null,
       anchor: LuigiRouting.getAnchor(),
+      cssVariables: await LuigiTheming.getCSSVariables()
     });
 
     IframeHelpers.specialIframeTypes
@@ -245,18 +247,26 @@
     return paths.includes(removeQueryParams(routePath));
   };
 
+  /**
+   * Clears the dirty state when dirty state promise resolves and dirty state is not needed anymore
+   * @param source used for drawers/modals/split view wc and iframe when source is needed to differentiate which mf is affected
+   */
+  const clearDirtyState = (source) => {
+    if (unsavedChanges && unsavedChanges.dirtySet) {
+      if (source) {
+        unsavedChanges.dirtySet.delete(source);
+      } else {
+        unsavedChanges.dirtySet.clear();
+      }
+    }
+  };
+
   const getUnsavedChangesModalPromise = (source) => {
     return new Promise((resolve, reject) => {
       if (shouldShowUnsavedChangesModal(source)) {
         showUnsavedChangesModal().then(
           () => {
-            if (unsavedChanges && unsavedChanges.dirtySet) {
-              if (source) {
-                unsavedChanges.dirtySet.delete(source);
-              } else {
-                unsavedChanges.dirtySet.clear();
-              }
-            }
+            clearDirtyState();
             resolve();
           },
           () => {
@@ -347,7 +357,14 @@
             } else if (prop == 'splitViewWC') {
               splitViewWC = obj.splitViewWC;
             } else if (prop === 'showLoadingIndicator') {
-              showLoadingIndicator = obj.showLoadingIndicator;
+              if(obj.showLoadingIndicator===true){
+                loadingIndicatorTimeout = setTimeout(()=>{
+                  showLoadingIndicator = true;
+                },250);
+              }else{
+                showLoadingIndicator = false;
+                clearTimeout(loadingIndicatorTimeout);
+              }
             } else if (prop === 'tabNav') {
               tabNav = obj.tabNav;
             } else if (prop === 'isNavigateBack') {
@@ -374,6 +391,9 @@
     StateHelpers.doOnStoreChange(
       store,
       () => {
+        const wc_container = document.querySelector('.wcContainer');
+        if (wc_container) wc_container.configChangedRequest = true;
+        
         NodeDataManagementStorage.deleteCache();
         const currentPath = Routing.getCurrentPath();
         Routing.handleRouteChange(
@@ -502,23 +522,26 @@
 
   const handleNavClick = (event) => {
     const node = event.detail.node;
-    getUnsavedChangesModalPromise().then(() => {
-      closeLeftNav();
-      if (node.openNodeInModal) {
-        const route = RoutingHelpers.buildRoute(node, `/${node.pathSegment}`);
-        openViewInModal(
-          route,
-          node.openNodeInModal === true ? {} : node.openNodeInModal
-        );
-      } else if (node.drawer) {
-        const route = RoutingHelpers.buildRoute(node, `/${node.pathSegment}`);
-        node.drawer.isDrawer = true;
-        openViewInDrawer(route, node.drawer);
-      } else {
-        getComponentWrapper().set({ isNavigationSyncEnabled: true });
-        Routing.handleRouteClick(node, getComponentWrapper());
-      }
-    });
+    getUnsavedChangesModalPromise().then(
+      () => {
+        closeLeftNav();
+        if (node.openNodeInModal) {
+          const route = RoutingHelpers.buildRoute(node, `/${node.pathSegment}`);
+          openViewInModal(
+            route,
+            node.openNodeInModal === true ? {} : node.openNodeInModal
+          );
+        } else if (node.drawer) {
+          const route = RoutingHelpers.buildRoute(node, `/${node.pathSegment}`);
+          node.drawer.isDrawer = true;
+          openViewInDrawer(route, node.drawer);
+        } else {
+          getComponentWrapper().set({ isNavigationSyncEnabled: true });
+          Routing.handleRouteClick(node, getComponentWrapper());
+        }
+      },
+      () => {}
+    );
   };
 
   const onResizeTabNav = () => {
@@ -897,6 +920,12 @@
     });
   };
 
+  export const getDirtyStatus = () => {
+    return unsavedChanges.dirtySet
+      ? unsavedChanges.dirtySet.size > 0
+      : unsavedChanges.isDirty;
+  };
+
   setContext('getUnsavedChangesModalPromise', getUnsavedChangesModalPromise);
 
   //// MICRO-FRONTEND MODAL
@@ -996,7 +1025,8 @@
         () => {
           resetModalData(index, isClosedInternal);
           rp && rp.doResolve(goBackContext);
-        }
+        },
+        () => {}
       );
     } else if (targetModal && targetModal.modalWC) {
       resetModalData(index, isClosedInternal);
@@ -1083,13 +1113,19 @@
     ) {
       try {
         if (drawerIframe) {
-          getUnsavedChangesModalPromise(drawerIframe.contentWindow).then(() => {
-            resetMicrofrontendDrawerData();
-          });
+          getUnsavedChangesModalPromise(drawerIframe.contentWindow).then(
+            () => {
+              resetMicrofrontendDrawerData();
+            },
+            () => {}
+          );
         } else if (drawerWC) {
-          getUnsavedChangesModalPromise().then(() => {
-            resetMicrofrontendDrawerData();
-          });
+          getUnsavedChangesModalPromise().then(
+            () => {
+              resetMicrofrontendDrawerData();
+            },
+            () => {}
+          );
         }
         IframeHelpers.getCurrentMicrofrontendIframe().removeAttribute('style');
       } catch (e) {
@@ -1341,6 +1377,7 @@
       }
 
       if ('luigi.get-context' === e.data.msg) {
+        contextRequested = true;
         iframe.luigi.clientVersion = e.data.clientVersion; // undefined for v0.x clients
         iframe.luigi.initOk = false; // get-context indication. used for handshake verification
 
@@ -1372,7 +1409,7 @@
             !currentNode.loadingIndicator ||
             currentNode.loadingIndicator.hideAutomatically !== false;
           if (loadingIndicatorAutoHideEnabled) {
-            showLoadingIndicator = false;
+              fadeOutAppLoadingIndicator();
           }
           ViewGroupPreloading.preload();
         } else if (iframe.luigi.preloading) {
@@ -1410,6 +1447,7 @@
       }
 
       if ('luigi.hide-loading-indicator' === e.data.msg) {
+        clearTimeout(loadingIndicatorTimeout);
         showLoadingIndicator = false;
       }
 
@@ -1533,6 +1571,7 @@
 
       if ('luigi.navigation.back' === e.data.msg) {
         const mfModalTopMostElement = mfModalList[mfModalList.length - 1];
+        const mfModalPreviousElement = mfModalList.length > 1 && mfModalList[mfModalList.length - 2];
         const _goBackContext =
           e.data.goBackContext && JSON.parse(e.data.goBackContext);
         if (
@@ -1542,9 +1581,19 @@
           )
         ) {
           closeModal(mfModalList.length - 1, true, _goBackContext);
-
-          config.iframe &&
-            (await sendContextToClient(config, {
+          let modalConfig = config;
+          // special case if going back with multiple modals, context should go back to previous modal, not main iframe
+          if (mfModalPreviousElement && mfModalPreviousElement.modalIframeData && mfModalPreviousElement.modalIframe){
+            const topMostModal = mfModalPreviousElement;
+            const topMostModalData = topMostModal.modalIframeData;
+            modalConfig =  {
+               pathParams: topMostModalData.pathParams,
+               context: topMostModalData.context,
+               iframe: topMostModal.modalIframe
+            };
+          } 
+          modalConfig.iframe &&
+            (await sendContextToClient(modalConfig, {
               goBackContext: _goBackContext,
             }));
         } else if (IframeHelpers.isMessageSource(e, splitViewIframe)) {
@@ -1565,21 +1614,24 @@
         } else {
           // go back: context from the view
           if (preservedViews && preservedViews.length > 0) {
-            getUnsavedChangesModalPromise().then(() => {
-              // remove current active iframe and data
-              Iframe.setActiveIframeToPrevious(node);
-              const previousActiveIframeData = preservedViews.pop();
-              // set new active iframe and preservedViews
-              config.iframe = Iframe.getActiveIframe(node);
-              isNavigateBack = true;
-              preservedViews = preservedViews;
-              goBackContext = _goBackContext;
-              // TODO: check if getNavigationPath or history pop to update hash / path
-              handleNavigation(
-                { params: { link: previousActiveIframeData.path } },
-                config
-              );
-            });
+            getUnsavedChangesModalPromise().then(
+              () => {
+                // remove current active iframe and data
+                Iframe.setActiveIframeToPrevious(node);
+                const previousActiveIframeData = preservedViews.pop();
+                // set new active iframe and preservedViews
+                config.iframe = Iframe.getActiveIframe(node);
+                isNavigateBack = true;
+                preservedViews = preservedViews;
+                goBackContext = _goBackContext;
+                // TODO: check if getNavigationPath or history pop to update hash / path
+                handleNavigation(
+                  { params: { link: previousActiveIframeData.path } },
+                  config
+                );
+              },
+              () => {}
+            );
           } else {
             if (_goBackContext) {
               console.warn(
@@ -1613,6 +1665,9 @@
       }
 
       if ('luigi.navigation.updateModalDataPath' === e.data.msg) {
+        if(!LuigiConfig.getConfigBooleanValue('routing.showModalPathInUrl')){
+          return;
+        }
         if (isSpecialIframe) {
           const route = GenericHelpers.addLeadingSlash(
             buildPath(
@@ -1778,6 +1833,16 @@
         const { anchor } = e.data;
         LuigiRouting.setAnchor(anchor);
       }
+
+      if ('luigi.setVGData' === e.data.msg) {
+        const vgData = e.data;
+        const vg = RoutingHelpers.findViewGroup(iframe.luigi.currentNode);
+        if (vg) {
+          const vgSettings = Iframe.getViewGroupSettings(vg);
+          vgSettings._liveCustomData = vgData.data;
+          LuigiConfig.configChanged('navigation.viewgroupdata');
+        }
+      }
     });
 
     // listeners are not automatically removed — cancel
@@ -1800,6 +1865,24 @@
       thirdPartyCookiesCheck.thirdPartyCookieErrorHandling();
     }
   };
+
+  /**
+   * This function will be called if the LuigiClient requested the context.
+   * That means spinner can fade out in order to display the mf.
+   * After 250 ms the spinner will be removed from DOM.
+   */
+  function fadeOutAppLoadingIndicator(){
+    const spinnerContainer = document.querySelector('.spinnerContainer.appSpinner');
+    if (spinnerContainer && spinnerContainer.classList.contains('fade-out')) {
+      spinnerContainer.classList.remove('fade-out');
+      setTimeout(()=>{
+        clearTimeout(loadingIndicatorTimeout);
+        showLoadingIndicator = false;
+      }, 250);
+    }else{
+      clearTimeout(loadingIndicatorTimeout);
+    }
+  }
 
   export const pathExists = async (path) => {
     const data = {
@@ -1889,8 +1972,7 @@
   });
 
   beforeUpdate(() => {
-    breadcrumbsEnabled =
-      GenericHelpers.requestExperimentalFeature('breadcrumbs');
+    breadcrumbsEnabled = LuigiConfig.getConfigValue('navigation.breadcrumbs');
     searchProvider = LuigiConfig.getConfigValue('globalSearch.searchProvider');
     configTag = LuigiConfig.getConfigValue('tag');
     isHeaderDisabled = LuigiConfig.getConfigValue('settings.header.disabled');
@@ -1975,21 +2057,19 @@
   </Backdrop>
   {#if showLoadingIndicator}
     <div
-      in:fade={{ delay: 250, duration: 250 }}
-      out:fade={{ duration: 250 }}
-      class="fd-page spinnerContainer"
+      class="fd-page spinnerContainer appSpinner fade-out"
       aria-hidden="false"
       aria-label="Loading"
     >
       <div
-        class="fd-busy-indicator--m"
+        class="fd-busy-indicator fd-busy-indicator--m"
         aria-hidden="false"
         aria-label="Loading"
         data-testid="luigi-loading-spinner"
       >
-        <div class="fd-busy-indicator--circle-0" />
-        <div class="fd-busy-indicator--circle-1" />
-        <div class="fd-busy-indicator--circle-2" />
+        <div class="fd-busy-indicator__circle" />
+        <div class="fd-busy-indicator__circle" />
+        <div class="fd-busy-indicator__circle" />
       </div>
     </div>
   {/if}
@@ -2159,6 +2239,15 @@
     display: block;
   }
 
+  .spinnerContainer {
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .fade-out {
+    opacity: 1;
+  }
+
   .iframeContainer {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
@@ -2187,7 +2276,20 @@
 
   :global(.iframeContainer.iframeContainerTabNav) {
     top: calc(
-      var(--luigi__shellbar--height) + var(--luigi__horizontal-nav--height)
+      var(--luigi__shellbar--height) +
+        var(
+          --luigi__horizontal-nav--live-height,
+          var(--luigi__horizontal-nav--height)
+        )
+    );
+  }
+
+  :global(.no-top-nav .iframeContainer.iframeContainerTabNav) {
+    top: calc(
+      var(
+        --luigi__horizontal-nav--live-height,
+        var(--luigi__horizontal-nav--height)
+      )
     );
   }
 
@@ -2247,14 +2349,14 @@
     :global(.splitViewContainer),
     :global(#splitViewDragger),
     :global(#splitViewDraggerBackdrop) {
-      @include transition(left 0.1s linear);
+      @include transition(left 0.1s linear, $spinnerOpacity);
     }
   }
 
   :global(.lui-semiCollapsible) {
     .iframeContainer,
     .spinnerContainer {
-      @include transition(left 0.1s linear);
+      @include transition(left 0.1s linear, $spinnerOpacity);
     }
     :global(.splitViewContainer),
     :global(#splitViewDragger),

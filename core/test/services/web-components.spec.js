@@ -43,7 +43,7 @@ describe('WebComponentService', function() {
     const sb = sinon.createSandbox();
     let container;
     let itemPlaceholder;
-    const ctx = { someValue: true };
+    const extendedContext = { context: { someValue: true } };
 
     beforeAll(() => {
       window.Luigi = {
@@ -63,17 +63,17 @@ describe('WebComponentService', function() {
     });
 
     it('check dom injection abort if container not attached', () => {
-      WebComponentService.attachWC('div', itemPlaceholder, container, ctx);
+      WebComponentService.attachWC('div', itemPlaceholder, container, extendedContext);
 
       expect(container.children.length).to.equal(0);
     });
 
     it('check dom injection', () => {
       container.appendChild(itemPlaceholder);
-      WebComponentService.attachWC('div', itemPlaceholder, container, ctx);
+      WebComponentService.attachWC('div', itemPlaceholder, container, extendedContext);
 
       const expectedCmp = container.children[0];
-      expect(expectedCmp.context).to.equal(ctx);
+      expect(expectedCmp.context).to.equal(extendedContext.context);
       expect(expectedCmp.LuigiClient.linkManager).to.equal(window.Luigi.navigation);
       expect(expectedCmp.LuigiClient.uxManager).to.equal(window.Luigi.ux);
       expect(expectedCmp.LuigiClient.getCurrentLocale()).to.equal(window.Luigi.i18n().getCurrentLocale());
@@ -91,6 +91,7 @@ describe('WebComponentService', function() {
 
       const myEl = Object.create(MyLuigiElement.prototype, {});
       sb.stub(myEl, '__postProcess').callsFake(() => {});
+      sb.stub(myEl, 'setAttribute').callsFake(() => {});
       sb.stub(document, 'createElement')
         .callThrough()
         .withArgs('my-wc')
@@ -101,9 +102,10 @@ describe('WebComponentService', function() {
       sb.stub(window, 'location').value({ origin: 'http://localhost' });
 
       container.appendChild(itemPlaceholder);
-      WebComponentService.attachWC(wc_id, itemPlaceholder, container, ctx, 'http://localhost:8080/');
+      WebComponentService.attachWC(wc_id, itemPlaceholder, container, extendedContext, 'http://localhost:8080/');
 
       assert(myEl.__postProcess.calledOnce, '__postProcess should be called');
+      expect(myEl.setAttribute.calledWith('lui_web_component', true)).to.equal(true);
     });
   });
 
@@ -224,7 +226,7 @@ describe('WebComponentService', function() {
 
       sb.stub(WebComponentService, 'attachWC').callsFake((id, iCnt, cnt, context) => {
         expect(cnt).to.equal(container);
-        expect(context).to.equal(ctx);
+        expect(JSON.stringify(context)).to.equal(JSON.stringify(ctx));
         done();
       });
 
@@ -252,7 +254,7 @@ describe('WebComponentService', function() {
 
       sb.stub(WebComponentService, 'attachWC').callsFake((id, iCnt, cnt, context) => {
         expect(cnt).to.equal(container);
-        expect(context).to.equal(ctx);
+        expect(JSON.stringify(context)).to.equal(JSON.stringify(ctx));
         done();
       });
 
@@ -286,7 +288,7 @@ describe('WebComponentService', function() {
 
       sb.stub(WebComponentService, 'attachWC').callsFake((id, iCnt, cnt, context) => {
         expect(cnt).to.equal(container);
-        expect(context).to.equal(ctx);
+        expect(JSON.stringify(context)).to.equal(JSON.stringify(ctx));
         done();
       });
 
@@ -414,7 +416,7 @@ describe('WebComponentService', function() {
   describe('check renderWebComponentCompound', function() {
     const sb = sinon.createSandbox();
 
-    const context = { key: 'value', mario: 'luigi' };
+    const extendedContext = { context: { key: 'value', mario: 'luigi' } };
 
     const eventEmitter = 'emitterId';
     const eventName = 'emitterId';
@@ -482,7 +484,7 @@ describe('WebComponentService', function() {
       sb.spy(WebComponentService, 'renderWebComponent');
       sb.stub(WebComponentService, 'registerWCFromUrl').resolves();
 
-      WebComponentService.renderWebComponentCompound(navNode, wc_container, context)
+      WebComponentService.renderWebComponentCompound(navNode, wc_container, extendedContext)
         .then(compoundCnt => {
           expect(wc_container.children.length).to.equal(1);
 
@@ -521,7 +523,7 @@ describe('WebComponentService', function() {
 
       sb.stub(WebComponentService, 'registerWCFromUrl').resolves();
 
-      WebComponentService.renderWebComponentCompound(node, wc_container, context).then(
+      WebComponentService.renderWebComponentCompound(node, wc_container, extendedContext).then(
         compoundCnt => {
           expect(WebComponentService.registerWCFromUrl.callCount).to.equal(3);
 
@@ -538,6 +540,39 @@ describe('WebComponentService', function() {
           done();
         }
       );
+    });
+  });
+
+  describe('Get user settings for wc', () => {
+    const sb = sinon.createSandbox();
+    afterEach(() => {
+      sb.restore();
+    });
+    it('get user settings for user settings group', () => {
+      const wc = {
+        viewUrl: '/test.js',
+        label: 'tets',
+        userSettingsGroup: 'language'
+      };
+      const storedUserSettingsData = {
+        account: { name: 'luigi', email: 'luigi@tets.com' },
+        language: { language: 'de', time: '12h', date: '' }
+      };
+      sb.stub(LuigiConfig, 'readUserSettings').resolves(storedUserSettingsData);
+      WebComponentService.getUserSettingsForWc(wc).then(userSettings => {
+        expect(userSettings).to.deep.equal({ language: 'de', time: '12h', date: '' });
+      });
+    });
+    it('get user settings, no user settings stored', () => {
+      const wc = {
+        viewUrl: '/test.js',
+        label: 'tets',
+        userSettingsGroup: 'language'
+      };
+      sb.stub(LuigiConfig, 'readUserSettings').resolves();
+      WebComponentService.getUserSettingsForWc(wc).then(userSettings => {
+        expect(userSettings).equal(null);
+      });
     });
   });
 });

@@ -4,9 +4,10 @@ const chai = require('chai');
 const assert = chai.assert;
 const sinon = require('sinon');
 import { AuthHelpers, NavigationHelpers, RoutingHelpers } from '../../../src/utilities/helpers';
-import { LuigiAuth, LuigiConfig, LuigiFeatureToggles } from '../../../src/core-api';
+import { LuigiAuth, LuigiConfig, LuigiFeatureToggles, LuigiI18N } from '../../../src/core-api';
 import { Routing } from '../../../src/services/routing';
 import { Navigation } from '../../../src/navigation/services/navigation';
+import { Iframe } from '../../../src/services/iframe';
 
 describe('Navigation-helpers', () => {
   describe('isNodeAccessPermitted', () => {
@@ -729,6 +730,7 @@ describe('Navigation-helpers', () => {
       assert.equal(tnd.children[1].label, 'Projects');
       assert.equal(tnd.children[2].label, 'test');
       assert.equal(tnd.children[2].isCat, true);
+      assert.equal(tnd.children[2].visibleChildren[0].pathSegment, 'user_management');
     });
   });
   describe('prepare for test id if no testId is configured', () => {
@@ -834,6 +836,70 @@ describe('Navigation-helpers', () => {
       assert.equal(NavigationHelpers.handleNavAnchorClickedWithoutMetaKey(event), true);
       sinon.assert.calledOnce(event.preventDefault);
       sinon.assert.notCalled(event.stopPropagation);
+    });
+  });
+
+  describe('getNodeLabel', () => {
+    let node = {
+      pathSegment: 'mynode',
+      label: 'myNode {viewGroupData.foo}',
+      viewUrl: 'test.html',
+      viewGroup: 'vg1'
+    };
+    beforeEach(() => {
+      sinon.stub(LuigiI18N, 'getTranslation').returns('myNode {viewGroupData.foo}');
+      sinon.stub(Iframe, 'getViewGroupSettings').returns({ _liveCustomData: { foo: 'Luigi rocks!' } });
+    });
+    afterEach(() => {
+      sinon.restore();
+      sinon.reset();
+    });
+    it('get correct node label', () => {
+      assert.notEqual(NavigationHelpers.getNodeLabel(node), 'myNode {viewGroupData.foo}');
+      assert.equal(NavigationHelpers.getNodeLabel(node), 'myNode Luigi rocks!');
+    });
+    it('getNodeLabel w/o vg', () => {
+      delete node.viewGroup;
+      assert.notEqual(NavigationHelpers.getNodeLabel(node), 'myNode Luigi rocks!');
+      assert.equal(NavigationHelpers.getNodeLabel(node), 'myNode {viewGroupData.foo}');
+    });
+  });
+
+  describe('getSideNavAccordionMode', () => {
+    beforeEach(() => {
+      sinon.stub(LuigiConfig, 'getConfigBooleanValue').returns(true);
+    });
+    afterEach(() => {
+      sinon.restore();
+      sinon.reset();
+    });
+    it('sideNavAccordionMode defined on selectedNode', () => {
+      let selectedNode = {
+        pathSegement: 'mf1',
+        sideNavAccordionMode: true
+      };
+      let sideNavAccordionMode = NavigationHelpers.getSideNavAccordionMode(selectedNode);
+      sinon.assert.notCalled(LuigiConfig.getConfigBooleanValue);
+      assert.equal(sideNavAccordionMode, true);
+    });
+    it('sideNavAccordionMode defined on parent', () => {
+      let selectedNode = {
+        pathSegement: 'mf1',
+        parent: {
+          sideNavAccordionMode: true
+        }
+      };
+      let sideNavAccordionMode = NavigationHelpers.getSideNavAccordionMode(selectedNode);
+      sinon.assert.notCalled(LuigiConfig.getConfigBooleanValue);
+      assert.equal(sideNavAccordionMode, true);
+    });
+    it('sideNavAccordionMode defined by default', () => {
+      let selectedNode = {
+        pathSegement: 'mf1'
+      };
+      let sideNavAccordionMode = NavigationHelpers.getSideNavAccordionMode(selectedNode);
+      sinon.assert.calledOnceWithExactly(LuigiConfig.getConfigBooleanValue, 'navigation.defaults.sideNavAccordionMode');
+      assert.equal(sideNavAccordionMode, true);
     });
   });
 });

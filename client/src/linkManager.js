@@ -46,6 +46,8 @@ export class linkManager extends LuigiClientBase {
    * @param {('fullscreen'|'l'|'m'|'s')} [modalSettings.size="l"] size of the modal
    * @param {string} modalSettings.width lets you specify a precise width for the modal. Allowed units are 'px', '%', 'rem', 'em', 'vh' and 'vw'.
    * @param {string} modalSettings.height lets you specify a precise height for the modal. Allowed units are 'px', '%', 'rem', 'em', 'vh' and 'vw'.
+   * @param {boolean} modalSettings.keepPrevious Lets you open multiple modals. Keeps the previously opened modal and allows to open another modal on top of the previous one. By default the previous modals are discarded.
+   * @param {string} modalSettings.closebtn_data_testid lets you specify a `data_testid` for the close button. Default value is `lui-modal-index-0`. If multiple modals are opened the index will be increased per modal.
    * @param {Object} splitViewSettings opens a view in a split view. Use these settings to configure the split view's behaviour
    * @param {string} splitViewSettings.title split view title. By default, it is the node label. If there is no label, it is left empty
    * @param {number} [splitViewSettings.size=40] height of the split view in percent
@@ -162,6 +164,7 @@ export class linkManager extends LuigiClientBase {
    * @param {string} modalSettings.width lets you specify a precise width for the modal. Allowed units are 'px', '%', 'rem', 'em', 'vh' and 'vw'.
    * @param {string} modalSettings.height lets you specify a precise height for the modal. Allowed units are 'px', '%', 'rem', 'em', 'vh' and 'vw'.
    * @param {boolean} modalSettings.keepPrevious Lets you open multiple modals. Keeps the previously opened modal and allows to open another modal on top of the previous one. By default the previous modals are discarded.
+   * @param {string} modalSettings.closebtn_data_testid lets you specify a `data_testid` for the close button. Default value is `lui-modal-index-0`. If multiple modals are opened the index will be increased per modal.
    * @example
    * LuigiClient.linkManager().openAsModal('projects/pr1/users', {title:'Users', size:'m'});
    */
@@ -170,18 +173,21 @@ export class linkManager extends LuigiClientBase {
   }
 
   /**
-   * Update current title and size of a modal.
+   * Updates the current title and size of a modal. If `routing.showModalPathInUrl` is set to `true`, the URL will be updated with the modal settings data.
+   * In addition, you can specify if a new history entry will be created with the updated URL.
    * @memberof linkManager
    * @param {Object} updatedModalSettings possibility to update the active modal.
    * @param {Object} updatedModalSettings.title update the `title` of the active modal.
    * @param {Object} updatedModalSettings.size update the `size` of the active modal.
+   * @param {boolean} addHistoryEntry adds an entry in the history, by default it's `false`.
    * @example
    * LuigiClient.linkManager().updateModalSettings({title:'LuigiModal', size:'l'});
    */
-  updateModalSettings(updatedModalSettings = {}) {
+  updateModalSettings(updatedModalSettings = {}, addHistoryEntry = false) {
     const message = {
       msg: 'luigi.navigation.updateModalSettings',
-      updatedModalSettings
+      updatedModalSettings,
+      addHistoryEntry
     };
     helpers.sendPostMessageToLuigiCore(message);
   }

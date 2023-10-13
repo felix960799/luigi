@@ -1,42 +1,40 @@
 import { Events } from '../constants/communication';
 import { LuigiInternalMessageID } from '../constants/internal-communication';
 import { GenericHelperFunctions } from '../utilities/helpers';
-import { LuigiCoreApi } from '../constants/core-api';
 
 export class ContainerService {
-  constructor() { }
-
-  isVisible(component: HTMLElement) {
+  isVisible (component: HTMLElement) {
     return !!(component.offsetWidth || component.offsetHeight || component.getClientRects().length);
   }
 
   /**
    * Sends a message to the iframe either with the custom keyword or any other message name
-   * @param iframeHandle the iframe to send the message to 
+   * @param iframeHandle the iframe to send the message to
    * @param msg the message to be sent
    * @param msgName the optional message name
    */
-  sendCustomMessageToIframe(iframeHandle: any, msg: any, msgName?: string) {
-    const messageName = msgName ? msgName : 'custom';
+  sendCustomMessageToIframe (iframeHandle: any, msg: any, msgName?: string) {
+    const messageName = msgName || 'custom';
     if (iframeHandle.iframe.contentWindow) {
       const iframeUrl = new URL(iframeHandle.iframe.src);
-      messageName === 'custom' ? iframeHandle.iframe.contentWindow.postMessage({ msg: messageName, data: msg }, iframeUrl.origin) :
-        iframeHandle.iframe.contentWindow.postMessage({ msg: messageName, ...msg }, iframeUrl.origin)
+      messageName === 'custom'
+        ? iframeHandle.iframe.contentWindow.postMessage({ msg: messageName, data: msg }, iframeUrl.origin)
+        : iframeHandle.iframe.contentWindow.postMessage({ msg: messageName, ...msg }, iframeUrl.origin);
     } else {
       console.error('Message target could not be resolved');
     }
   }
 
   /**
-   * 
-   * @param {string} msg the event message 
+   * Dispatch an event to the given target container
+   * @param {string} msg the event message
    * @param {HTMLElement} targetCnt the targeted HTML element onto which the event is dispatched
    * @param {any} data custom data added to the event to be dispatched
-   * @param {Function} callback 
-   * @param {string} callbackName 
+   * @param {Function} callback
+   * @param {string} callbackName
    */
-  dispatch(msg: string, targetCnt: HTMLElement, data: any, callback?: Function, callbackName?: string): void {
-    let customEvent = new CustomEvent(msg, { detail: data });
+  dispatch (msg: string, targetCnt: HTMLElement, data: any, callback?: Function, callbackName?: string): void {
+    const customEvent = new CustomEvent(msg, { detail: data });
     if (callback && GenericHelperFunctions.isFunction(callback) && callbackName) {
       (customEvent as any)[callbackName] = data => {
         callback(data);
@@ -45,7 +43,7 @@ export class ContainerService {
     targetCnt.dispatchEvent(customEvent);
   }
 
-  getTargetContainer(event) {
+  getTargetContainer (event) {
     let cnt;
     globalThis.__luigi_container_manager.container.forEach(element => {
       if (element.iframeHandle?.iframe && element.iframeHandle.iframe.contentWindow === event.source) {
@@ -56,25 +54,41 @@ export class ContainerService {
     return cnt;
   }
 
-  getContainerManager() {
+  getContainerManager () {
     if (!globalThis.__luigi_container_manager) {
       globalThis.__luigi_container_manager = {
         container: [],
         messageListener: event => {
           const targetCnt = this.getTargetContainer(event);
           const target = targetCnt?.iframeHandle?.iframe?.contentWindow;
-          if (target === event.source) {
+          if (target && target === event.source) {
             // messages emitted from microfrontends
             const msg = event.data.msg;
 
             // dispatch an event depending on message
             switch (msg) {
               case LuigiInternalMessageID.CUSTOM_MESSAGE:
-                this.dispatch(Events.CUSTOM_MESSAGE, targetCnt, event.data.data);
+                {
+                  const evData = event.data.data;
+                  const id = evData.id;
+                  delete evData.id;
+                  this.dispatch(Events.CUSTOM_MESSAGE, targetCnt, {
+                    id: id,
+                    _metaData: {},
+                    data: evData
+                  });
+                }
                 break;
               case LuigiInternalMessageID.GET_CONTEXT:
                 // Automatically send a luigi.init message to complete the initial handshake with the microfrontend
-                target.postMessage({ msg: LuigiInternalMessageID.SEND_CONTEXT_HANDSHAKE, context: targetCnt.context || {}, internal: {} }, '*');
+                target.postMessage(
+                  {
+                    msg: LuigiInternalMessageID.SEND_CONTEXT_HANDSHAKE,
+                    context: targetCnt.context || {},
+                    internal: {}
+                  },
+                  '*'
+                );
                 break;
               case LuigiInternalMessageID.NAVIGATION_REQUEST:
                 this.dispatch(Events.NAVIGATION_REQUEST, targetCnt, event.data.params);
@@ -87,10 +101,16 @@ export class ContainerService {
                 this.dispatch(Events.INITIALIZED, targetCnt, event.data.params);
                 break;
               case LuigiInternalMessageID.ADD_SEARCH_PARAMS_REQUEST:
-                this.dispatch(Events.ADD_SEARCH_PARAMS_REQUEST, targetCnt, { data: event.data.data, keepBrowserHistory: event.data.keepBrowserHistory });
+                this.dispatch(Events.ADD_SEARCH_PARAMS_REQUEST, targetCnt, {
+                  data: event.data.data,
+                  keepBrowserHistory: event.data.keepBrowserHistory
+                });
                 break;
               case LuigiInternalMessageID.ADD_NODE_PARAMS_REQUEST:
-                this.dispatch(Events.ADD_NODE_PARAMS_REQUEST, targetCnt, { data: event.data.data, keepBrowserHistory: event.data.keepBrowserHistory });
+                this.dispatch(Events.ADD_NODE_PARAMS_REQUEST, targetCnt, {
+                  data: event.data.data,
+                  keepBrowserHistory: event.data.keepBrowserHistory
+                });
                 break;
               case LuigiInternalMessageID.SHOW_CONFIRMATION_MODAL_REQUEST:
                 this.dispatch(Events.SHOW_CONFIRMATION_MODAL_REQUEST, targetCnt, event.data.data);
@@ -150,7 +170,7 @@ export class ContainerService {
     return globalThis.__luigi_container_manager;
   }
 
-  registerContainer(container: HTMLElement): void {
+  registerContainer (container: HTMLElement): void {
     this.getContainerManager().container.push(container);
   }
 }
