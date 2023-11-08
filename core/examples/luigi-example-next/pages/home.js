@@ -7,12 +7,10 @@ function Home() {
     if (typeof self !== 'undefined') {
       // Your code that relies on self here
       const LuigiClient = require('@luigi-project/client');
-LuigiClient.addInitListener(function(context) {
-      console.log('Luigi Client initialised in Home');
-    });
+      LuigiClient.addInitListener(function(context) {
+        console.log('Luigi Client initialised in Home');
+      });
     }
-
-    
   }, []);
 
   return (
