@@ -98,20 +98,21 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
             }
           } else if (route) {
             let bPreventHistory = false;
-            LuigiClient.linkManager().fromVirtualTreeRoot().getCurrentRoute().then((sOldLuigiRoute)=>{
-              sOldLuigiRoute = sOldLuigiRoute.charAt(0) === "/" ? sOldLuigiRoute.substring(1) : sOldLuigiRoute;
-            const aNewRoute = currentRouteObj.pattern.match(/^([^/]+)/);
-            let sNewRoute = aNewRoute ? aNewRoute[0] || "" : "";
-            const aOldRoute = sOldLuigiRoute.match(/^([^/]+)/);
-            let sOldRoute = aOldRoute ? aOldRoute[0] || "" : "";
+            LuigiClient.linkManager()
+              .fromVirtualTreeRoot()
+              .getCurrentRoute()
+              .then(sOldLuigiRoute => {
+                sOldLuigiRoute = sOldLuigiRoute.charAt(0) === '/' ? sOldLuigiRoute.substring(1) : sOldLuigiRoute;
+                const aNewRoute = currentRouteObj.pattern.match(/^([^/]+)/);
+                let sNewRoute = aNewRoute ? aNewRoute[0] || '' : '';
+                const aOldRoute = sOldLuigiRoute.match(/^([^/]+)/);
+                let sOldRoute = aOldRoute ? aOldRoute[0] || '' : '';
 
-            if (currentRouteObj.data.preventBrowserHistory === true && sNewRoute === sOldRoute) {
-              bPreventHistory = true;
-            }
-            lm.withOptions({ preventHistoryEntry: bPreventHistory }).navigate(route);
-          }
-          );
-        
+                if (currentRouteObj.data.preventBrowserHistory === true && sNewRoute === sOldRoute) {
+                  bPreventHistory = true;
+                }
+                lm.withOptions({ preventHistoryEntry: bPreventHistory }).navigate(route);
+              });
           }
         }
       });
