@@ -96,7 +96,7 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
             if (currentRouteObj.data.updateModalDataPath) {
               lm.updateModalPathInternalNavigation(route, {}, currentRouteObj.data.addHistoryEntry);
             }
-          } else if (route) {
+          } else if (currentRouteObj.data.preventBrowserHistory === true && route) {
             let bPreventHistory = false;
             LuigiClient.linkManager()
               .fromVirtualTreeRoot()
@@ -108,11 +108,13 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
                 const aOldRoute = sOldLuigiRoute.match(/^([^/]+)/);
                 let sOldRoute = aOldRoute ? aOldRoute[0] || '' : '';
 
-                if (currentRouteObj.data.preventBrowserHistory === true && sNewRoute === sOldRoute) {
+                if (sNewRoute === sOldRoute) {
                   bPreventHistory = true;
                 }
                 lm.withOptions({ preventHistoryEntry: bPreventHistory }).navigate(route);
               });
+          }else if(route){
+            lm.navigate(route);
           }
         }
       });
