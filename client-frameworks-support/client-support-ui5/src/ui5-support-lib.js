@@ -113,7 +113,7 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
                 }
                 lm.withOptions({ preventHistoryEntry: bPreventHistory }).navigate(route);
               });
-          }else if(route){
+          } else if (route) {
             lm.navigate(route);
           }
         }
