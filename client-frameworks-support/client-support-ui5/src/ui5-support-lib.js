@@ -12,7 +12,6 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
     LuigiClient,
     connectTo: function(oComponent) {
       const routingConfig = oComponent.getManifestEntry('sap.ui5').routing;
-      let sOldRouteName = '';
       oComponent.setModel(model, '$luigiCtx');
 
       // Create preload view
@@ -97,14 +96,28 @@ sap.ui.define(['sap/ui/model/json/JSONModel', '@luigi-project/client/luigi-clien
             if (currentRouteObj.data.updateModalDataPath) {
               lm.updateModalPathInternalNavigation(route, {}, currentRouteObj.data.addHistoryEntry);
             }
-          } else if (route) {
+          } else if (currentRouteObj.data?.preventBrowserHistory === true && route) {
             let bPreventHistory = false;
-            if (currentRouteObj.data.preventBrowserHistory === true && sOldRouteName === currentRouteObj.name) {
-              bPreventHistory = true;
-            }
-            lm.withOptions({ preventHistoryEntry: bPreventHistory }).navigate(route);
+            LuigiClient.linkManager()
+              .fromVirtualTreeRoot()
+              .getCurrentRoute()
+              .then(sOldLuigiRoute => {
+                sOldLuigiRoute = sOldLuigiRoute.charAt(0) === '/' ? sOldLuigiRoute.substring(1) : sOldLuigiRoute;
+                const aNewRoute = currentRouteObj.pattern.match(/^([^/]+)/);
+                let sNewRoute = aNewRoute ? aNewRoute[0] || '' : '';
+                const aOldRoute = sOldLuigiRoute.match(/^([^/]+)/);
+                let sOldRoute = aOldRoute ? aOldRoute[0] || '' : '';
+
+                if (sNewRoute === sOldRoute) {
+                  bPreventHistory = true;
+                }
+                lm.withOptions({
+                  preventHistoryEntry: bPreventHistory
+                }).navigate(route);
+              });
+          } else if (route) {
+            lm.navigate(route);
           }
-          sOldRouteName = currentRouteObj.name;
         }
       });
     }
